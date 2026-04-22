@@ -48,6 +48,12 @@
     name: osac.templates.ocp_virt_vm
     tasks_from: create_build_spec.yaml
 
+- name: Configure CNV permitted host devices for GPU passthrough
+  ansible.builtin.include_role:
+    name: osac.templates.ocp_virt_vm
+    tasks_from: configure_permitted_host_devices.yaml
+  when: gpu_devices | default([]) | length > 0
+
 - name: Step - Create secrets (user-data, SSH) and add to spec
   ansible.builtin.include_role:
     name: "{{ (create_step_secrets_override | default(create_step_secrets_default)).name }}"

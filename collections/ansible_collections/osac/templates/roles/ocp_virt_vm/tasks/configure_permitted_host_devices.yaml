@@ -1,0 +1,49 @@
+---
+- name: Build desired pciHostDevices entries from gpu_devices
+  ansible.builtin.set_fact:
+    desired_pci_host_devices: >-
+      [{% for dev in gpu_devices %}
+        {"pciDeviceSelector": "{{ dev.pci_device_selector }}",
+         "resourceName": "{{ dev.resource_name }}"}
+        {{ "," if not loop.last }}
+      {% endfor %}]
+  when: gpu_devices | default([]) | length > 0
+
+- name: Read current HyperConverged CR
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ remote_cluster_kubeconfig | default(omit) }}"
+    api_version: hco.kubevirt.io/v1beta1
+    kind: HyperConverged
+    name: kubevirt-hyperconverged
+    namespace: openshift-cnv
+  register: hyperconverged_cr
+  when: gpu_devices | default([]) | length > 0
+
+- name: Compute merged pciHostDevices preserving existing entries
+  ansible.builtin.set_fact:
+    merged_pci_host_devices: "{{ _existing + _new_only }}"
+  vars:
+    _existing: >-
+      {{ hyperconverged_cr.resources[0].spec.permittedHostDevices.pciHostDevices
+         | default([]) }}
+    _existing_selectors: >-
+      {{ _existing | map(attribute='pciDeviceSelector') | list }}
+    _new_only: >-
+      {{ desired_pci_host_devices
+         | rejectattr('pciDeviceSelector', 'in', _existing_selectors)
+         | list }}
+  when: gpu_devices | default([]) | length > 0
+
+- name: Patch HyperConverged CR with merged pciHostDevices
+  kubernetes.core.k8s:
+    kubeconfig: "{{ remote_cluster_kubeconfig | default(omit) }}"
+    api_version: hco.kubevirt.io/v1beta1
+    kind: HyperConverged
+    name: kubevirt-hyperconverged
+    namespace: openshift-cnv
+    state: patched
+    definition:
+      spec:
+        permittedHostDevices:
+          pciHostDevices: "{{ merged_pci_host_devices }}"
+  when: gpu_devices | default([]) | length > 0

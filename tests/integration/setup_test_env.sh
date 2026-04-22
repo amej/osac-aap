@@ -76,14 +76,33 @@ kubectl apply -f https://github.com/operator-framework/operator-lifecycle-manage
 echo "Installing RHACM CRDs (ManagedCluster)..."
 kubectl apply -f https://raw.githubusercontent.com/stolostron/managedcluster-import-controller/main/deploy/crds/cluster.open-cluster-management.io_managedclusters.yaml 2>/dev/null || echo "RHACM CRDs may already exist or URL changed"
 
+echo "Installing HyperConverged CRD (OpenShift Virtualization / CNV)..."
+kubectl apply --server-side -f https://raw.githubusercontent.com/kubevirt/hyperconverged-cluster-operator/main/deploy/crds/hco00.crd.yaml 2>/dev/null || echo "HyperConverged CRD may already exist or URL changed"
+
+echo "Waiting for HyperConverged CRD to be established..."
+kubectl wait --for=condition=Established crd/hyperconvergeds.hco.kubevirt.io --timeout=60s || echo "Timeout waiting for HyperConverged CRD"
+
 # 4. Create test namespaces
 echo "Creating test namespaces..."
 kubectl create namespace osac-system || true
 kubectl create namespace osac-workflows-test || true
 kubectl create namespace cluster-test-cluster-work || true
 kubectl create namespace computeinstance-test-vm-work || true
+kubectl create namespace computeinstance-test-vm-gpu-work || true
+kubectl create namespace openshift-cnv || true
 
-# 5. Apply test fixtures
+# 5. Create minimal HyperConverged CR for GPU passthrough tests
+echo "Creating HyperConverged CR for GPU passthrough tests..."
+kubectl apply -f - <<HCEOF
+apiVersion: hco.kubevirt.io/v1beta1
+kind: HyperConverged
+metadata:
+  name: kubevirt-hyperconverged
+  namespace: openshift-cnv
+spec: {}
+HCEOF
+
+# 6. Apply test fixtures
 # Note: computeinstance-defaults-test.yaml is intentionally omitted — it has no required
 # spec fields (tests defaults merging) and is read from file by tests via lookup().
 echo "Applying test fixtures..."

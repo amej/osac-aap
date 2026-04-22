@@ -33,11 +33,30 @@
     - ../../../common_vars.yml
 
   tasks:
-    - name: Verify GPU host device is present in VM template spec
+    - name: Verify GPU host devices are present in VM template spec
       ansible.builtin.assert:
         that:
           - vm_template_spec is defined
           - vm_template_spec.domain.devices.hostDevices is defined
-          - vm_template_spec.domain.devices.hostDevices | length > 0
-          - vm_template_spec.domain.devices.hostDevices | selectattr('deviceName', 'equalto', 'nvidia.com/GB100') | list | length > 0
-        fail_msg: "GPU device not found in VM template spec: {{ vm_template_spec }}"
+          - vm_template_spec.domain.devices.hostDevices | length == 1
+          - vm_template_spec.domain.devices.hostDevices[0].name == 'gpu-0'
+          - vm_template_spec.domain.devices.hostDevices[0].deviceName == 'nvidia.com/GB100'
+        fail_msg: "GPU devices not found in VM template spec: {{ vm_template_spec }}"
+
+    - name: Read HyperConverged CR
+      kubernetes.core.k8s_info:
+        api_version: hco.kubevirt.io/v1beta1
+        kind: HyperConverged
+        name: kubevirt-hyperconverged
+        namespace: openshift-cnv
+      register: hc_cr
+
+    - name: Verify GPU device was registered in HyperConverged CR
+      ansible.builtin.assert:
+        that:
+          - hc_cr.resources | length == 1
+          - hc_cr.resources[0].spec.permittedHostDevices.pciHostDevices is defined
+          - hc_cr.resources[0].spec.permittedHostDevices.pciHostDevices | length == 1
+          - hc_cr.resources[0].spec.permittedHostDevices.pciHostDevices[0].pciDeviceSelector == '10DE:2901'
+          - hc_cr.resources[0].spec.permittedHostDevices.pciHostDevices[0].resourceName == 'nvidia.com/GB100'
+        fail_msg: "GPU device not registered in HyperConverged CR: {{ hc_cr.resources }}"
