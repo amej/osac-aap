@@ -27,9 +27,7 @@
           ComputeInstance '{{ compute_instance_name }}' has no tenant_storage_classes
           in extra_vars. The osac-operator CI controller should inject the resolved
           storageClasses list before triggering provisioning.
-      when: >-
-        tenant_storage_classes is not defined or
-        tenant_storage_classes | length == 0
+      when: tenant_storage_classes | length == 0
 
     - name: Set storage classes list for downstream roles
       ansible.builtin.set_fact:

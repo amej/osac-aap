@@ -17,7 +17,7 @@
 - name: Resolve StorageClass for requested tier
   ansible.builtin.set_fact:
     _tenant_sc_match: "{{ tenant_storage_class_storage_classes | selectattr('tier', 'equalto', tenant_storage_class_storage_tier) | list }}"
-    _tenant_sc_available_tiers: "{{ tenant_storage_class_storage_classes | map(attribute='tier') | sort | join(', ') }}"
+    _tenant_sc_available_tiers: "{{ tenant_storage_class_storage_classes | map(attribute='tier') | unique | sort | join(', ') }}"
 
 - name: Fail if requested tier is not available
   ansible.builtin.fail:
