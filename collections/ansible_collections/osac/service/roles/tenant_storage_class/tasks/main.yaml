@@ -1,38 +1,31 @@
 ---
-# Discover the StorageClass to use for a tenant by reading tenant.status.storageClass.
-# The osac-operator Tenant controller is the single source of truth for StorageClass
-# validation (duplicate detection, fallback to Default). This role reads the already-
-# resolved result instead of re-implementing the same logic independently.
+# Resolve a StorageClass for a specific storage tier from the pre-resolved
+# storageClasses list injected via extra_vars by the ComputeInstance controller.
+# The Tenant controller is the single source of truth for StorageClass
+# resolution (per-tier duplicate detection, tenant vs shared Default fallback).
+# This role performs tier selection only.
 # Sets tenant_storage_class_name or fails.
 
-- name: Retrieve tenant
-  kubernetes.core.k8s_info:
-    api_version: osac.openshift.io/v1alpha1
-    kind: Tenant
-    name: "{{ tenant_storage_class_tenant_name }}"
-    namespace: "{{ tenant_namespace }}"
-  register: tenant_storage_class_tenant_result
-
-- name: Fail if tenant not found
-  ansible.builtin.fail:
-    msg: "Tenant '{{ tenant_storage_class_tenant_name }}' not found in namespace '{{ tenant_namespace }}'."
-  when: tenant_storage_class_tenant_result.resources | length != 1
-
-- name: Fail if tenant not ready
+- name: Fail if storageClasses list is empty
   ansible.builtin.fail:
     msg: >-
-      Tenant '{{ tenant_storage_class_tenant_name }}' is not ready
-      (phase: {{ tenant_storage_class_tenant_result.resources[0].status.phase | default('unknown') }}).
-      Check Tenant conditions for details.
-  when: tenant_storage_class_tenant_result.resources[0].status.phase | default('') != "Ready"
+      No resolved storage tiers available. The storageClasses list injected
+      by the ComputeInstance controller is empty. Check the Tenant
+      StorageClassReady condition.
+  when: tenant_storage_class_storage_classes | length == 0
 
-- name: Fail if tenant storageClass is empty
-  ansible.builtin.fail:
-    msg: >-
-      Tenant '{{ tenant_storage_class_tenant_name }}' is ready but status.storageClass is empty.
-      This is unexpected; check the Tenant StorageClassReady condition.
-  when: tenant_storage_class_tenant_result.resources[0].status.storageClass | default('') | length == 0
-
-- name: Set StorageClass name from tenant status
+- name: Resolve StorageClass for requested tier
   ansible.builtin.set_fact:
-    tenant_storage_class_name: "{{ tenant_storage_class_tenant_result.resources[0].status.storageClass }}"
+    _tenant_sc_match: "{{ tenant_storage_class_storage_classes | selectattr('tier', 'equalto', tenant_storage_class_storage_tier) | list }}"
+    _tenant_sc_available_tiers: "{{ tenant_storage_class_storage_classes | map(attribute='tier') | sort | join(', ') }}"
+
+- name: Fail if requested tier is not available
+  ansible.builtin.fail:
+    msg: >-
+      Storage tier "{{ tenant_storage_class_storage_tier }}" is not available.
+      Available tiers: {{ _tenant_sc_available_tiers }}.
+  when: _tenant_sc_match | length == 0
+
+- name: Set StorageClass name from resolved tier
+  ansible.builtin.set_fact:
+    tenant_storage_class_name: "{{ _tenant_sc_match[0].name }}"

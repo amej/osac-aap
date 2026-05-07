@@ -3,155 +3,112 @@
 # Each play is guarded by a `when` condition -- only the play whose controlling
 # variable is defined will run. Pass exactly one variable per invocation.
 #
-# All tests require the management cluster context to be active (kubeconfig for
-# the management cluster, not the VM cluster). The role reads from Tenant status,
-# which lives on the management cluster.
+# The role receives a pre-resolved storageClasses list (injected via extra_vars
+# by the ComputeInstance controller) and selects a StorageClass by tier.
+# No K8s API calls are made.
 #
-# Required variables for every test:
-#   test_tenant_name|test_tenant_name_*:  The Tenant name to look up.
-#   test_tenant_namespace:                The namespace of the Tenant CR.
+#   Test 1 (happy path -- resolve "fast" tier):
+#     ansible-playbook ... -e test_happy_path=true
 #
-#   Test 1 (tenant Ready with storageClass set):
-#     Prerequisites: Tenant exists, phase=Ready, status.storageClass is set
-#     ansible-playbook ... -e test_tenant_name=tenant-akshay -e test_tenant_namespace=osac
+#   Test 2 (requested tier not available):
+#     ansible-playbook ... -e test_tier_not_available=true
 #
-#   Test 2 (tenant not ready -- Progressing phase):
-#     Prerequisites: Tenant exists but phase != Ready (e.g. duplicate SCs configured)
-#     ansible-playbook ... -e test_tenant_name_not_ready=tenant-akshay -e test_tenant_namespace=osac
-#
-#   Test 3 (tenant not found):
-#     Prerequisites: Tenant with the given name does not exist in the namespace
-#     ansible-playbook ... -e test_tenant_name_missing=tenant-nonexistent -e test_tenant_namespace=osac
-#
-#   Test 4 (tenant ready but storageClass empty -- unexpected edge case):
-#     Prerequisites: Tenant phase=Ready but status.storageClass is empty (misconfigured)
-#     ansible-playbook ... -e test_tenant_name_no_sc=tenant-akshay -e test_tenant_namespace=osac
+#   Test 3 (empty storageClasses list):
+#     ansible-playbook ... -e test_empty_list=true
 
 # ──────────────────────────────────────────────────────────────
-# Test 1: Tenant ready with storageClass set (happy path)
-# Expected: role succeeds, tenant_storage_class_name set to the SC name from tenant status
+# Test 1: Resolve requested tier (happy path)
+# Expected: role succeeds, tenant_storage_class_name set
 # ──────────────────────────────────────────────────────────────
-- name: Test tenant_storage_class role -- tenant ready with storageClass
+- name: Test tenant_storage_class role -- resolve tier (happy path)
   hosts: localhost
   gather_facts: false
 
   tasks:
-    - name: Discover StorageClass for ready tenant
+    - name: Discover StorageClass for requested tier
       ansible.builtin.include_role:
         name: osac.service.tenant_storage_class
       vars:
-        tenant_storage_class_tenant_name: "{{ test_tenant_name }}"
-        tenant_namespace: "{{ test_tenant_namespace }}"
-      when:
-        - test_tenant_name is defined
-        - test_tenant_namespace is defined
+        tenant_storage_class_storage_classes:
+          - name: "ceph-acme-default"
+            tier: "default"
+          - name: "ceph-acme-fast"
+            tier: "fast"
+        tenant_storage_class_storage_tier: "fast"
+      when: test_happy_path | default(false) | bool
 
     - name: Verify discovered StorageClass name is set
       ansible.builtin.assert:
         that:
           - tenant_storage_class_name is defined
-          - tenant_storage_class_name | length > 0
-        fail_msg: "Role did not set tenant_storage_class_name"
+          - tenant_storage_class_name == "ceph-acme-fast"
+        fail_msg: "Expected 'ceph-acme-fast' but got '{{ tenant_storage_class_name | default('undefined') }}'"
         success_msg: "Discovered StorageClass: {{ tenant_storage_class_name }}"
-      when:
-        - test_tenant_name is defined
-        - test_tenant_namespace is defined
+      when: test_happy_path | default(false) | bool
 
 # ──────────────────────────────────────────────────────────────
-# Test 2: Tenant not ready (Progressing phase) -- error path
-# Expected: role fails with "not ready" message including phase
+# Test 2: Requested tier not available -- error path
+# Expected: role fails with message listing available tiers
 # ──────────────────────────────────────────────────────────────
-- name: Test tenant_storage_class role -- tenant not ready (should fail)
+- name: Test tenant_storage_class role -- tier not available (should fail)
   hosts: localhost
   gather_facts: false
 
   tasks:
-    - name: Run not-ready failure test
-      when:
-        - test_tenant_name_not_ready is defined
-        - test_tenant_namespace is defined
+    - name: Run tier-not-available failure test
+      when: test_tier_not_available | default(false) | bool
       block:
-        - name: Attempt to discover StorageClass for not-ready tenant (expected to fail)
+        - name: Attempt to discover StorageClass for unavailable tier (expected to fail)
           ansible.builtin.include_role:
             name: osac.service.tenant_storage_class
           vars:
-            tenant_storage_class_tenant_name: "{{ test_tenant_name_not_ready }}"
-            tenant_namespace: "{{ test_tenant_namespace }}"
+            tenant_storage_class_storage_classes:
+              - name: "ceph-acme-default"
+                tier: "default"
+              - name: "ceph-acme-standard"
+                tier: "standard"
+            tenant_storage_class_storage_tier: "gpu"
 
         - name: This task should not be reached -- role should have failed
           ansible.builtin.fail:
-            msg: "Role did not fail as expected when tenant is not ready"
+            msg: "Role did not fail as expected when tier is not available"
 
       rescue:
-        - name: Verify role failed with expected not-ready message
+        - name: Verify role failed with expected tier-not-available message
           ansible.builtin.assert:
             that:
-              - "'is not ready' in ansible_failed_result.msg"
+              - "'is not available' in ansible_failed_result.msg"
+              - "'Available tiers' in ansible_failed_result.msg"
             fail_msg: "Role failed but with unexpected message: {{ ansible_failed_result.msg }}"
             success_msg: "Role failed as expected: {{ ansible_failed_result.msg }}"
 
 # ──────────────────────────────────────────────────────────────
-# Test 3: Tenant not found -- error path
-# Expected: role fails with "not found" message
+# Test 3: Empty storageClasses list -- error path
+# Expected: role fails with "empty" message
 # ──────────────────────────────────────────────────────────────
-- name: Test tenant_storage_class role -- tenant not found (should fail)
+- name: Test tenant_storage_class role -- empty storageClasses (should fail)
   hosts: localhost
   gather_facts: false
 
   tasks:
-    - name: Run tenant-not-found failure test
-      when:
-        - test_tenant_name_missing is defined
-        - test_tenant_namespace is defined
+    - name: Run empty-storageClasses failure test
+      when: test_empty_list | default(false) | bool
       block:
-        - name: Attempt to discover StorageClass for missing tenant (expected to fail)
+        - name: Attempt to discover StorageClass when storageClasses is empty (expected to fail)
           ansible.builtin.include_role:
             name: osac.service.tenant_storage_class
           vars:
-            tenant_storage_class_tenant_name: "{{ test_tenant_name_missing }}"
-            tenant_namespace: "{{ test_tenant_namespace }}"
+            tenant_storage_class_storage_classes: []
+            tenant_storage_class_storage_tier: "default"
 
         - name: This task should not be reached -- role should have failed
           ansible.builtin.fail:
-            msg: "Role did not fail as expected when tenant is not found"
+            msg: "Role did not fail as expected when storageClasses is empty"
 
       rescue:
-        - name: Verify role failed with expected not-found message
+        - name: Verify role failed with expected empty message
           ansible.builtin.assert:
             that:
-              - "'not found' in ansible_failed_result.msg"
-            fail_msg: "Role failed but with unexpected message: {{ ansible_failed_result.msg }}"
-            success_msg: "Role failed as expected: {{ ansible_failed_result.msg }}"
-
-# ──────────────────────────────────────────────────────────────
-# Test 4: Tenant ready but storageClass empty -- error path
-# Expected: role fails with "storageClass is empty" message
-# ──────────────────────────────────────────────────────────────
-- name: Test tenant_storage_class role -- tenant ready but storageClass empty (should fail)
-  hosts: localhost
-  gather_facts: false
-
-  tasks:
-    - name: Run empty-storageClass failure test
-      when:
-        - test_tenant_name_no_sc is defined
-        - test_tenant_namespace is defined
-      block:
-        - name: Attempt to discover StorageClass when tenant storageClass is empty (expected to fail)
-          ansible.builtin.include_role:
-            name: osac.service.tenant_storage_class
-          vars:
-            tenant_storage_class_tenant_name: "{{ test_tenant_name_no_sc }}"
-            tenant_namespace: "{{ test_tenant_namespace }}"
-
-        - name: This task should not be reached -- role should have failed
-          ansible.builtin.fail:
-            msg: "Role did not fail as expected when tenant storageClass is empty"
-
-      rescue:
-        - name: Verify role failed with expected empty-storageClass message
-          ansible.builtin.assert:
-            that:
-              - "'storageClass is empty' in ansible_failed_result.msg"
+              - "'empty' in ansible_failed_result.msg"
             fail_msg: "Role failed but with unexpected message: {{ ansible_failed_result.msg }}"
             success_msg: "Role failed as expected: {{ ansible_failed_result.msg }}"
