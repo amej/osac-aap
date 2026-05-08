@@ -6,7 +6,7 @@
 
 The Windows VM provisioning is **complete and working** using the production dataVolume path:
 
-- ✅ **Golden image**: `quay.io/jhernand/ci:latest` boots successfully
+- ✅ **Golden image**: `quay.io/jhernand/ci:0` boots successfully
 - ✅ **Volume type**: dataVolume (CDI import from registry) - **production path**
 - ✅ **UEFI firmware**: Secure Boot enabled for modern Windows
 - ✅ **Sysprep control**: `vm_enable_sysprep: false` for pre-configured golden images
@@ -19,7 +19,7 @@ Existing VM demonstrates it works:
 kubectl get vm test-golden-windows -n test-golden-images
 # Status: Running, Ready
 # Volume: dataVolume (test-golden-windows-root-disk)
-# Image: docker://quay.io/jhernand/ci:latest
+# Image: docker://quay.io/jhernand/ci:0
 # IP: 10.128.0.160
 ```
 
@@ -69,7 +69,7 @@ cd osac-aap
 source .venv/bin/activate
 
 ansible-playbook tests/test-windows-golden-image.yml \
-  -e golden_image_ref=quay.io/jhernand/ci:latest \
+  -e golden_image_ref=quay.io/jhernand/ci:0 \
   -e test_namespace=demo-windows \
   -e test_vm_name=demo-windows-vm
 
@@ -94,7 +94,7 @@ For golden images (pre-configured Windows):
 vars:
   vm_enable_sysprep: false  # CRITICAL: Skip sysprep for golden images
   guest_os_family: windows
-  vm_image_source: "quay.io/jhernand/ci:latest"
+  vm_image_source: "quay.io/jhernand/ci:0"
 ```
 
 Role automatically:

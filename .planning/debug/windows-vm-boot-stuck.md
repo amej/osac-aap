@@ -210,7 +210,7 @@ The fix should mirror the Linux pattern (lines 100-119) but adapted for Windows/
 
 **The ocp_virt_vm role unconditionally creates a sysprep disk for ALL Windows VMs, which conflicts with pre-configured golden images.**
 
-User clarified that golden images (pre-configured, pre-sysprepped images like `quay.io/jhernand/ci:latest`) are used for Windows VM deployment. The original diagnosis about missing CloudBase-Init configuration was incorrect for this deployment model.
+User clarified that golden images (pre-configured, pre-sysprepped images like `quay.io/jhernand/ci:0`) are used for Windows VM deployment. The original diagnosis about missing CloudBase-Init configuration was incorrect for this deployment model.
 
 **Why this causes boot failure:**
 1. Golden images are already generalized and sysprepped
@@ -254,7 +254,7 @@ vars:
 
 ### Sysprep Fix: ✅ VERIFIED WORKING
 
-Test results from `quay.io/jhernand/ci:latest`:
+Test results from `quay.io/jhernand/ci:0`:
 - ✅ `vm_enable_sysprep: false` correctly skipped sysprep ConfigMap creation
 - ✅ `vm_enable_sysprep: false` correctly skipped sysprep disk attachment
 - ✅ VM reached Running state (VirtualMachine.status.ready = True)
@@ -273,7 +273,7 @@ Booting from Hard Disk...
 No bootable device.
 ```
 
-**Root Cause:** Golden image `quay.io/jhernand/ci:latest` is not bootable
+**Root Cause:** Golden image `quay.io/jhernand/ci:0` is not bootable
 
 **Analysis:**
 - VM firmware: SeaBIOS (legacy BIOS mode)
@@ -297,13 +297,13 @@ No bootable device.
 3. **Verify golden image contents:**
    ```bash
    # Check if image has UEFI boot files
-   oc debug -n test-golden-images test-golden-windows --image=quay.io/jhernand/ci:latest
+   oc debug -n test-golden-images test-golden-windows --image=quay.io/jhernand/ci:0
    ls -la /EFI/BOOT/  # UEFI boot files
    ls -la /boot/      # Legacy BIOS boot files
    ```
 
 **Next Steps:**
-1. Confirm with image provider whether `quay.io/jhernand/ci:latest` is UEFI or BIOS
+1. Confirm with image provider whether `quay.io/jhernand/ci:0` is UEFI or BIOS
 2. Add UEFI firmware configuration to ocp_virt_vm role for Windows VMs
 3. Test golden image boot with UEFI firmware
 
