@@ -1,5 +1,24 @@
 ---
-- name: Build template spec base
+# Build root disk volume definition (containerDisk for Windows golden images, dataVolume otherwise)
+- name: Build root disk volume (containerDisk)
+  ansible.builtin.set_fact:
+    root_disk_volume:
+      - name: root-disk
+        containerDisk:
+          image: "{{ vm_image_source }}"
+  when:
+    - guest_os_family == 'windows'
+    - vm_use_container_disk | default(false) | bool
+
+- name: Build root disk volume (dataVolume)
+  ansible.builtin.set_fact:
+    root_disk_volume:
+      - name: root-disk
+        dataVolume:
+          name: "{{ compute_instance_name }}-root-disk"
+  when: not (guest_os_family == 'windows' and vm_use_container_disk | default(false) | bool)
+
+- name: Build template spec base (Linux)
   ansible.builtin.set_fact:
     vm_template_spec:
       domain:
@@ -29,10 +48,48 @@
       networks:
         - name: default
           pod: {}
-      volumes:
-        - name: root-disk
-          dataVolume:
-            name: "{{ compute_instance_name }}-root-disk"
+      volumes: "{{ root_disk_volume }}"
+  when: guest_os_family != 'windows'
+
+- name: Build template spec base (Windows)
+  ansible.builtin.set_fact:
+    vm_template_spec:
+      domain:
+        cpu:
+          cores: "{{ vm_cpu_cores }}"
+          sockets: 1
+          threads: 1
+        resources:
+          requests:
+            memory: "{{ vm_memory }}"
+        firmware:
+          bootloader:
+            efi:
+              secureBoot: true
+        devices:
+          disks:
+            - name: root-disk
+              disk:
+                bus: virtio
+          interfaces:
+            - name: default
+              masquerade: {}
+          tpm: {}
+        features:
+          smm:
+            enabled: true
+          acpi: {}
+          apic: {}
+          hyperv:
+            relaxed: {}
+            vapic: {}
+            spinlocks:
+              spinlocks: 8192
+      networks:
+        - name: default
+          pod: {}
+      volumes: "{{ root_disk_volume }}"
+  when: guest_os_family == 'windows'
 
 - name: Add GPU passthrough device to template spec if required
   ansible.builtin.set_fact:

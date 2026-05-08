@@ -63,13 +63,14 @@ OpenShift 4.17 cluster with GitHub OAuth authentication pre-configured.
 ### VM Templates
 
 #### `ocp_virt_vm`
-Linux virtual machine template with configurable resources and cloud-init support.
+Virtual machine template for OpenShift Virtualization: **Linux and Windows** guests use the same template ID. Linux is the default. Windows is selected when any of the following is true (in order): role var `guest_os_family: windows` (e.g. extra vars), annotation `osac.openshift.io/guest-os-family: windows` on the `ComputeInstance`, or `spec.image.sourceRef` contains the KubeVirt Windows container disk path `containerdisks/windows` (for example `quay.io/containerdisks/windows:ltsc2022`). Windows uses sysprep / CloudBase-Init paths, Hyper-V domain defaults, and matching delete cleanup.
 
 **Parameters:**
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `exposed_ports` | string | "22/tcp" | Comma-separated ports (e.g., "22/tcp,80/tcp") |
+| `guest_os_family` | string | `linux` | `linux` or `windows` — overrides inference when set before the role runs |
+| `exposed_ports` | string | "22/tcp" (linux) / "3389/tcp" (windows) | Comma-separated ports (e.g., "22/tcp,80/tcp") |
 
 The following are read from the `ComputeInstance` spec:
 
@@ -84,33 +85,7 @@ The following are read from the `ComputeInstance` spec:
 | `spec.userDataSecretRef.name` | Secret containing cloud-init user data |
 | `spec.additionalDisks` | Additional data disks |
 
-#### `windows_oci_vm`
-Windows virtual machine template with CloudBase-Init configuration and Hyper-V enlightenments. Provisions Windows VMs from OCI container images with sysprep-based hostname configuration.
-
-**Parameters:**
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `exposed_ports` | string | "3389/tcp" | Comma-separated ports (e.g., "3389/tcp,80/tcp") |
-
-The following are read from the `ComputeInstance` spec:
-
-| Spec Field | Description |
-|-----------|-------------|
-| `spec.cores` | Number of CPU cores (default: 2) |
-| `spec.memoryGiB` | Memory allocation in GiB (default: 4) |
-| `spec.bootDisk.sizeGiB` | Root disk size in GiB (default: 40) |
-| `spec.image.sourceRef` | Windows OCI container image |
-| `spec.runStrategy` | VM run strategy (Always, Halted, etc.) |
-| `spec.userDataSecretRef.name` | Secret containing CloudBase-Init user data |
-| `spec.additionalDisks` | Additional data disks |
-
-**Windows-specific features:**
-- Hostname set via sysprep unattend.xml (truncated to 15 characters for NetBIOS)
-- Enhanced Hyper-V enlightenments (10 features) for optimal Windows performance
-- Windows clock configuration (UTC base, HPET disabled, Hyper-V timer)
-- Sysprep disk mounted as SATA CD-ROM (required by Windows Setup)
-- Extended VM ready timeout (900s) to accommodate Windows boot and sysprep
+**Windows-specific behavior** (when guest OS resolves to `windows`): hostname via sysprep unattend.xml (15-character NetBIOS limit), enhanced Hyper-V enlightenments and clock policy, SATA sysprep CD-ROM, optional CloudBase-Init user-data secret, 900s ready wait.
 
 ## Usage
 

@@ -30,18 +30,28 @@
         runStrategy: Halted
   when: vm_exists.resources | length > 0
 
-- name: Wait for VM to stop
+- name: Wait for VirtualMachineInstance to stop
+  # CRITICAL: Must wait for the VirtualMachineInstance (VMI) to fully disappear before
+  # deleting the VirtualMachine (VM) definition. A VM with runStrategy=Halted can report
+  # Ready=False while its VMI is still terminating, creating a race condition where
+  # KubeVirt rejects the VM delete operation with "Virtual machine is still running".
+  #
+  # KubeVirt architecture: VM (desired state) -> VMI (running instance)
+  # Per KubeVirt API design, the VMI must be absent before VM deletion succeeds.
+  # Reference: https://kubevirt.io/api-reference/v1.3.1/definitions.html#_v1_virtualmachine
+  #            https://github.com/kubevirt/kubevirt/blob/main/docs/devel/deletion.md
+  #
+  # This task polls for VMI absence (resources | length == 0) with 60 retries × 5s = 5 min timeout.
   kubernetes.core.k8s_info:
     kubeconfig: "{{ remote_cluster_kubeconfig | default(omit) }}"
     api_version: kubevirt.io/v1
-    kind: VirtualMachine
+    kind: VirtualMachineInstance
     name: "{{ compute_instance_name }}"
     namespace: "{{ compute_instance_target_namespace }}"
-    wait: true
-    wait_condition:
-      type: Ready
-      status: "False"
-    wait_timeout: 300
+  register: vmi_stopped
+  until: vmi_stopped.resources | length == 0
+  retries: 60
+  delay: 5
   when: vm_exists.resources | length > 0
 
 - name: Delete VirtualMachine
@@ -56,6 +66,10 @@
     wait_timeout: 300
 
 - name: Delete VM load balancer service
+  # This Service is created only when a post-create hook provisions a load-balancer
+  # Service for the VM. It is not created by the default create flow, so it may not
+  # exist on every delete run. The failed_when guard below is consistent with other
+  # delete tasks in this file and prevents spurious failures when the resource is absent.
   kubernetes.core.k8s:
     kubeconfig: "{{ remote_cluster_kubeconfig | default(omit) }}"
     api_version: v1
@@ -63,6 +77,11 @@
     name: "{{ compute_instance_name }}-load-balancer"
     namespace: "{{ compute_instance_target_namespace }}"
     state: absent
+  register: delete_lb_service
+  failed_when:
+    - delete_lb_service.failed is defined
+    - delete_lb_service.failed
+    - "'not found' not in (delete_lb_service.msg | default(''))"
 
 - name: Delete root disk DataVolume
   kubernetes.core.k8s:
@@ -104,21 +123,7 @@
     - delete_user_data_secret.failed
     - "'not found' not in (delete_user_data_secret.msg | default(''))"
 
-- name: Delete cloud-init secret
-  kubernetes.core.k8s:
-    kubeconfig: "{{ remote_cluster_kubeconfig | default(omit) }}"
-    api_version: v1
-    kind: Secret
-    name: "{{ compute_instance_name }}-cloud-init"
-    namespace: "{{ compute_instance_target_namespace }}"
-    state: absent
-  register: delete_cloud_init_secret
-  failed_when:
-    - delete_cloud_init_secret.failed is defined
-    - delete_cloud_init_secret.failed
-    - "'not found' not in (delete_cloud_init_secret.msg | default(''))"
-
-- name: Delete ssh public key secret
+- name: Delete ssh public key secret (Linux)
   kubernetes.core.k8s:
     kubeconfig: "{{ remote_cluster_kubeconfig | default(omit) }}"
     api_version: v1
@@ -131,6 +136,22 @@
     - delete_ssh_secret.failed is defined
     - delete_ssh_secret.failed
     - "'not found' not in (delete_ssh_secret.msg | default(''))"
+  when: guest_os_family == 'linux'
+
+- name: Delete sysprep ConfigMap (Windows)
+  kubernetes.core.k8s:
+    kubeconfig: "{{ remote_cluster_kubeconfig | default(omit) }}"
+    api_version: v1
+    kind: ConfigMap
+    name: "{{ compute_instance_name }}-sysprep"
+    namespace: "{{ compute_instance_target_namespace }}"
+    state: absent
+  register: delete_sysprep_configmap
+  failed_when:
+    - delete_sysprep_configmap.failed is defined
+    - delete_sysprep_configmap.failed
+    - "'not found' not in (delete_sysprep_configmap.msg | default(''))"
+  when: guest_os_family == 'windows'
 
 - name: Display deletion status
   ansible.builtin.debug:

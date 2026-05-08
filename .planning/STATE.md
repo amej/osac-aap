@@ -2,9 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Windows VM Provisioning
-status: shipped
-last_updated: "2026-04-29"
-last_activity: 2026-04-29
+status: "Phase 01 shipped — PR #281"
+last_updated: "2026-05-04T08:19:21.386Z"
 progress:
   total_phases: 1
   completed_phases: 1
@@ -20,14 +19,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-29)
 
 **Core value:** Boot a Windows VM from an OCI registry image, connect it to the network, and verify it's accessible via RDP and VNC console.
-**Current focus:** v1.0 shipped — planning next milestone
+**Current focus:** Phase 01 — windows-vm-provisioning
 
 ## Current Position
 
 Milestone: v1.0 shipped (2026-04-29)
-Phase: 1 (only phase — complete)
-Plan: All complete (3/3)
-Status: Milestone shipped
+Phase: 01
+Plan: Not started
+Status: Phase 01 shipped — PR #281
 
 Progress: [██████████] 100%
 
@@ -35,7 +34,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 3
+- Total plans completed: 6
 - Timeline: 2026-04-28 to 2026-04-29
 
 **By Phase:**
@@ -68,6 +67,6 @@ Items acknowledged and carried forward from milestone close:
 
 ## Session Continuity
 
-Last session: 2026-04-29
+Last session: 2026-04-30
 Milestone: v1.0 shipped
 Resume file: None
