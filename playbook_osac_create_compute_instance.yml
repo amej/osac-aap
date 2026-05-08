@@ -29,9 +29,10 @@
           storageClasses list before triggering provisioning.
       when: tenant_storage_classes | length == 0
 
-    - name: Set storage classes list for downstream roles
+    - name: Set storage classes context for downstream roles
       ansible.builtin.set_fact:
         tenant_storage_class_storage_classes: "{{ tenant_storage_classes }}"
+        tenant_storage_class_tenant_name: "{{ compute_instance.status.tenantReference.name }}"
 
   tasks:
 

@@ -9,9 +9,10 @@
 - name: Fail if storageClasses list is empty
   ansible.builtin.fail:
     msg: >-
-      No resolved storage tiers available. The storageClasses list injected
-      by the ComputeInstance controller is empty. Check the Tenant
-      StorageClassReady condition.
+      No resolved storage tiers available for tenant
+      "{{ tenant_storage_class_tenant_name }}". The storageClasses list
+      injected by the ComputeInstance controller is empty. Check the
+      Tenant StorageClassReady condition.
   when: tenant_storage_class_storage_classes | length == 0
 
 - name: Resolve StorageClass for requested tier
@@ -22,7 +23,8 @@
 - name: Fail if requested tier is not available
   ansible.builtin.fail:
     msg: >-
-      Storage tier "{{ tenant_storage_class_storage_tier }}" is not available.
+      Storage tier "{{ tenant_storage_class_storage_tier }}" is not available
+      for tenant "{{ tenant_storage_class_tenant_name }}".
       Available tiers: {{ _tenant_sc_available_tiers }}.
   when: _tenant_sc_match | length == 0
 
