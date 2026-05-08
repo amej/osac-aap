@@ -6,16 +6,20 @@
       ComputeInstance provisioning requires a StorageClass for the tenant.
       tenant_storage_class_name is set but empty.
     success_msg: "Using tenant StorageClass: {{ tenant_storage_class_name }}"
+  when: not (vm_use_container_disk | default(false) | bool)
 
 - name: Set storage_class from tenant StorageClass
   ansible.builtin.set_fact:
     storage_class: "{{ tenant_storage_class_name }}"
+  when: not (vm_use_container_disk | default(false) | bool)
 
 - name: Using tenant storage_class
   ansible.builtin.debug:
     var: storage_class
+  when: not (vm_use_container_disk | default(false) | bool)
 
 - name: Create DataVolume for VM root disk
+  when: not (vm_use_container_disk | default(false) | bool)
   kubernetes.core.k8s:
     kubeconfig: "{{ remote_cluster_kubeconfig | default(omit) }}"
     apply: true
