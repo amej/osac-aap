@@ -8,11 +8,6 @@ guest_os_family: linux
 # Default: true (create sysprep disk for fresh Windows installation images)
 vm_enable_sysprep: true
 
-# vm_use_container_disk: Use ephemeral containerDisk instead of persistent DataVolume.
-# Set to true for golden images that require containerDisk (e.g., quay.io/jhernand/ci:0).
-# Default: false (use persistent DataVolume with CDI import)
-vm_use_container_disk: false
-
 # Windows Sysprep OOBE Configuration
 # These settings configure Windows Out-of-Box Experience (OOBE) to auto-complete setup.
 # Used when vm_enable_sysprep is true.

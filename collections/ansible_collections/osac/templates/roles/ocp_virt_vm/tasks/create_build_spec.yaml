@@ -1,22 +1,11 @@
 ---
-# Build root disk volume definition (containerDisk for Windows golden images, dataVolume otherwise)
-- name: Build root disk volume (containerDisk)
-  ansible.builtin.set_fact:
-    root_disk_volume:
-      - name: root-disk
-        containerDisk:
-          image: "{{ vm_image_source }}"
-  when:
-    - guest_os_family == 'windows'
-    - vm_use_container_disk | default(false) | bool
-
+# Build root disk volume definition (dataVolume)
 - name: Build root disk volume (dataVolume)
   ansible.builtin.set_fact:
     root_disk_volume:
       - name: root-disk
         dataVolume:
           name: "{{ compute_instance_name }}-root-disk"
-  when: not (guest_os_family == 'windows' and vm_use_container_disk | default(false) | bool)
 
 - name: Build template spec base (Linux)
   ansible.builtin.set_fact:
