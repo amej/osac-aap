@@ -13,6 +13,13 @@ vm_enable_sysprep: true
 # Default: false (use persistent DataVolume with CDI import)
 vm_use_container_disk: false
 
+# Windows Sysprep OOBE Configuration
+# These settings configure Windows Out-of-Box Experience (OOBE) to auto-complete setup.
+# Used when vm_enable_sysprep is true.
+vm_sysprep_timezone: "Eastern Standard Time"     # Timezone (Windows timezone name)
+vm_sysprep_admin_password: "123456"              # Administrator password (plaintext)
+vm_sysprep_autologon_enabled: true               # Enable automatic login on first boot
+
 default_vm_internal_network: "hypershift"
 default_vm_storage_class: "nfs-client"
 default_vm_labels: "{{ {compute_instance_label: compute_instance_name} }}"

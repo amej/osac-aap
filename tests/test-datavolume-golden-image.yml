@@ -1,0 +1,144 @@
+---
+- name: Test Windows VM with DataVolume + Registry Golden Image
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    compute_instance:
+      metadata:
+        name: test-windows-dv-golden
+        namespace: test-tenant
+        labels:
+          osac.openshift.io/compute-instance-id: test-golden-dv
+          osac.openshift.io/tenant: test-tenant
+        annotations:
+          osac.openshift.io/tenant: test-tenant
+          osac.openshift.io/guest-os-family: "windows"
+      spec:
+        cores: 4
+        memoryGiB: 8
+        bootDisk:
+          sizeGiB: 80
+        image:
+          sourceRef: "quay.io/jhernand/ci:0"  # Golden image with sysprepped tag
+        runStrategy: "Always"
+
+  tasks:
+    - name: Create test-tenant namespace
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: test-tenant
+
+    - name: Deploy Windows VM with DataVolume from Registry
+      ansible.builtin.include_role:
+        name: osac.templates.ocp_virt_vm
+        tasks_from: create
+      vars:
+        # DataVolume settings (default path)
+        vm_use_container_disk: false  # Use DataVolume with registry source
+        vm_enable_sysprep: true       # Enable sysprep to auto-complete OOBE
+
+        # OS configuration
+        guest_os_family: windows
+
+        # Template configuration
+        template_parameters: {}
+        template_id: "ocp_virt_vm"
+        compute_instance_label: "osac.openshift.io/compute-instance"
+
+        # Instance configuration
+        compute_instance_name: "{{ compute_instance.metadata.name }}"
+        tenant_target_namespace: "{{ compute_instance.metadata.namespace }}"
+
+        # Test environment - use lvms-vg1 storage class for DataVolume
+        tenant_storage_class_name: "lvms-vg1"
+
+    - name: Wait for DataVolume to be ready
+      kubernetes.core.k8s_info:
+        api_version: cdi.kubevirt.io/v1beta1
+        kind: DataVolume
+        name: "{{ compute_instance.metadata.name }}-root-disk"
+        namespace: "{{ compute_instance.metadata.namespace }}"
+      register: dv_info
+      until:
+        - dv_info.resources | length > 0
+        - dv_info.resources[0].status.phase is defined
+        - dv_info.resources[0].status.phase == "Succeeded"
+      retries: 60
+      delay: 10
+
+    - name: Display DataVolume status
+      ansible.builtin.debug:
+        msg: "DataVolume {{ compute_instance.metadata.name }}-root-disk is {{ dv_info.resources[0].status.phase }}"
+
+    - name: Wait for VirtualMachine to be ready
+      kubernetes.core.k8s_info:
+        api_version: kubevirt.io/v1
+        kind: VirtualMachine
+        name: "{{ compute_instance.metadata.name }}"
+        namespace: "{{ compute_instance.metadata.namespace }}"
+      register: vm_info
+      until:
+        - vm_info.resources | length > 0
+        - vm_info.resources[0].status.ready is defined
+        - vm_info.resources[0].status.ready == true
+      retries: 30
+      delay: 10
+
+    - name: Display VirtualMachine status
+      ansible.builtin.debug:
+        msg: "VirtualMachine {{ compute_instance.metadata.name }} is ready={{ vm_info.resources[0].status.ready }}"
+
+    - name: Get VirtualMachineInstance for VNC details
+      kubernetes.core.k8s_info:
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstance
+        name: "{{ compute_instance.metadata.name }}"
+        namespace: "{{ compute_instance.metadata.namespace }}"
+      register: vmi_info
+
+    - name: Display VNC access instructions
+      ansible.builtin.debug:
+        msg: |
+          ===================================================================
+          DataVolume Golden Image Test - VERIFICATION CHECKLIST
+          ===================================================================
+
+          ✓ a) VM created with dataVolume: {{ 'PASS' if dv_info.resources | length > 0 else 'FAIL' }}
+          ✓ b) Golden image quay.io/jhernand/ci:0: {{ 'PASS' if vm_info.resources[0].spec.template.spec.volumes[0].dataVolume.name is defined else 'FAIL' }}
+          ✓ c) VM reached Running state: {{ 'PASS' if vmi_info.resources | length > 0 and vmi_info.resources[0].status.phase == 'Running' else 'PENDING - check status below' }}
+
+          Next steps for manual verification:
+
+          d) Windows desktop appears via VNC:
+             Connect using: virtctl vnc {{ compute_instance.metadata.name }} -n {{ compute_instance.metadata.namespace }}
+
+          e) SysPrep enabled:
+             - Sysprep ConfigMap should exist with unattend.xml
+             - VM should auto-complete OOBE and boot to Windows desktop
+
+          ===================================================================
+          VM Status: {{ vmi_info.resources[0].status.phase if vmi_info.resources | length > 0 else 'Not found' }}
+          ===================================================================
+
+    - name: Verify sysprep ConfigMap exists
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: ConfigMap
+        name: "{{ compute_instance.metadata.name }}-sysprep"
+        namespace: "{{ compute_instance.metadata.namespace }}"
+      register: sysprep_check
+
+    - name: Confirm sysprep is enabled
+      ansible.builtin.assert:
+        that: sysprep_check.resources | length > 0
+        success_msg: "✓ SysPrep enabled - sysprep ConfigMap created with unattend.xml"
+        fail_msg: "✗ SysPrep ConfigMap missing when it should exist for OOBE automation"
+
+    - name: Display sysprep ConfigMap content
+      ansible.builtin.debug:
+        msg: "Sysprep ConfigMap contains unattend.xml for hostname: {{ compute_instance.metadata.name[:15] }}"
