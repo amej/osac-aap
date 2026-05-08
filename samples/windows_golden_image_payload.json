@@ -14,7 +14,7 @@
       "sizeGiB": 60
     },
     "image": {
-      "sourceRef": "quay.io/jhernand/ci:latest"
+      "sourceRef": "quay.io/jhernand/ci:0"
     },
     "runStrategy": "Always"
   }

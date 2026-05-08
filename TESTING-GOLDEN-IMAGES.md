@@ -74,7 +74,7 @@ kubectl get vm test-golden-windows -n test-golden-images \
         bootDisk:
           sizeGiB: 60
         image:
-          sourceRef: "quay.io/jhernand/ci:latest"
+          sourceRef: "quay.io/jhernand/ci:0"
 ```
 
 ### Option B: Via ComputeInstance CR
@@ -95,7 +95,7 @@ spec:
   bootDisk:
     sizeGiB: 60
   image:
-    sourceRef: "quay.io/jhernand/ci:latest"
+    sourceRef: "quay.io/jhernand/ci:0"
 ```
 
 **Note:** If using CR approach, ensure the playbook/operator extracts the `vm-enable-sysprep` annotation and passes it to the role.
