@@ -27,7 +27,7 @@
     definition:
       metadata:
         annotations:
-          osac.openshift.io/reconciled-config-version: "{{ compute_instance.status.desiredConfigVersion | default('unknown') }}"
+          osac.openshift.io/reconciled-config-version: "{{ compute_instance.status.desiredConfigVersion | default('unknown') | string }}"
 
 - name: Get VM status
   kubernetes.core.k8s_info:
