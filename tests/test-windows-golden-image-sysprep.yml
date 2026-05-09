@@ -23,13 +23,17 @@
           osac.openshift.io/tenant: "{{ test_namespace }}"
           osac.openshift.io/guest-os-family: "windows"
       spec:
+        templateID: osac.templates.ocp_virt_vm
         cores: 2
         memoryGiB: 4
         bootDisk:
           sizeGiB: 80
         image:
+          sourceType: registry
           sourceRef: "{{ golden_image_ref }}"
         runStrategy: "Always"
+      status:
+        desiredConfigVersion: "1"
 
   tasks:
     - name: Create test namespace
@@ -56,13 +60,17 @@
               osac.openshift.io/tenant: "{{ test_namespace }}"
               osac.openshift.io/guest-os-family: "windows"
           spec:
+            templateID: osac.templates.ocp_virt_vm
             cores: 2
             memoryGiB: 4
             bootDisk:
               sizeGiB: 80
             image:
+              sourceType: registry
               sourceRef: "{{ golden_image_ref }}"
             runStrategy: "Always"
+          status:
+            desiredConfigVersion: "1"
 
     - name: Deploy Windows golden image VM with sysprep OOBE
       ansible.builtin.include_role:
