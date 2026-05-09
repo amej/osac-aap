@@ -10,7 +10,7 @@
   vars:
     # Test VM configuration
     test_vm_name: "test-windows-sysprep-vm"
-    test_namespace: "default"
+    test_namespace: "test-golden-images"
     golden_image_ref: "quay.io/jhernand/ci:0"
     remote_cluster_kubeconfig: "{{ lookup('env', 'KUBECONFIG') }}"
 
@@ -26,7 +26,7 @@
         cores: 2
         memoryGiB: 4
         bootDisk:
-          sizeGiB: 60
+          sizeGiB: 80
         image:
           sourceRef: "{{ golden_image_ref }}"
         runStrategy: "Always"
@@ -41,6 +41,28 @@
           kind: Namespace
           metadata:
             name: "{{ test_namespace }}"
+
+    - name: Create ComputeInstance CR for testing
+      kubernetes.core.k8s:
+        kubeconfig: "{{ remote_cluster_kubeconfig | default(omit) }}"
+        state: present
+        definition:
+          apiVersion: osac.openshift.io/v1alpha1
+          kind: ComputeInstance
+          metadata:
+            name: "{{ test_vm_name }}"
+            namespace: "{{ test_namespace }}"
+            annotations:
+              osac.openshift.io/tenant: "{{ test_namespace }}"
+              osac.openshift.io/guest-os-family: "windows"
+          spec:
+            cores: 2
+            memoryGiB: 4
+            bootDisk:
+              sizeGiB: 80
+            image:
+              sourceRef: "{{ golden_image_ref }}"
+            runStrategy: "Always"
 
     - name: Deploy Windows golden image VM with sysprep OOBE
       ansible.builtin.include_role:
@@ -137,3 +159,13 @@
     - name: Display sysprep unattend.xml content
       ansible.builtin.debug:
         msg: "{{ sysprep_configmap.resources[0].data['Unattend.xml'] }}"
+
+    - name: Cleanup instructions
+      ansible.builtin.debug:
+        msg: |
+          Test completed successfully!
+
+          To clean up resources:
+          kubectl delete computeinstance {{ test_vm_name }} -n {{ test_namespace }}
+          kubectl delete vm {{ test_vm_name }} -n {{ test_namespace }}
+          kubectl delete namespace {{ test_namespace }}
