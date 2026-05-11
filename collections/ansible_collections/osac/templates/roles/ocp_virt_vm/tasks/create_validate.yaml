@@ -7,7 +7,7 @@
 
 - name: Merge template defaults into template_parameters
   ansible.builtin.set_fact:
-    params: "{{ default_arg_specs | combine(template_parameters) }}"
+    params: "{{ default_arg_specs | combine(template_parameters | default({})) }}"
 
 - name: Extract VM configuration from ComputeInstance spec
   ansible.builtin.set_fact:
@@ -19,6 +19,16 @@
     vm_ssh_key: "{{ compute_instance.spec.sshKey | default('') }}"
     vm_user_data_secret_ref: "{{ (compute_instance.spec.userDataSecretRef | default({})).name | default('') }}"
     vm_additional_disks: "{{ compute_instance.spec.additionalDisks | default([]) }}"
+
+- name: Require explicit Windows container disk (no vendor default image)
+  ansible.builtin.assert:
+    that:
+      - (vm_image_source | default('') | string | length) > 0
+    fail_msg: >-
+      Windows guests require spec.image.sourceRef on the ComputeInstance (or override role defaults).
+      Microsoft does not ship an official KubeVirt container disk for Windows; use a Windows image
+      from your own registry (for example a golden image built for your environment).
+  when: guest_os_family == 'windows'
 
 - name: Extract VM hostname from ComputeInstance metadata (Windows NetBIOS limit)
   ansible.builtin.set_fact:

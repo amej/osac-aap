@@ -63,7 +63,7 @@ OpenShift 4.17 cluster with GitHub OAuth authentication pre-configured.
 ### VM Templates
 
 #### `ocp_virt_vm`
-Virtual machine template for OpenShift Virtualization: **Linux and Windows** guests use the same template ID. Linux is the default. Windows is selected when any of the following is true (in order): role var `guest_os_family: windows` (e.g. extra vars), annotation `osac.openshift.io/guest-os-family: windows` on the `ComputeInstance`, or `spec.image.sourceRef` contains the KubeVirt Windows container disk path `containerdisks/windows` (for example `quay.io/containerdisks/windows:ltsc2022`). Windows uses sysprep / CloudBase-Init paths, Hyper-V domain defaults, and matching delete cleanup.
+Virtual machine template for OpenShift Virtualization: **Linux and Windows** guests use the same template ID. Linux is the default. Windows is selected when any of the following is true (in order): role var `guest_os_family: windows` (e.g. extra vars), annotation `osac.openshift.io/guest-os-family: windows` on the `ComputeInstance`, or `spec.image.sourceRef` contains the substring `containerdisks/windows` (an informal convention in some community Windows disk images — not a Microsoft-official image catalog). **Windows requires** `spec.image.sourceRef` to point at **your** Windows container disk (golden image or registry path you maintain); this template does not ship a default. Windows uses sysprep / CloudBase-Init paths, Hyper-V domain defaults, and matching delete cleanup.
 
 **Parameters:**
 

@@ -1,7 +1,9 @@
 ---
 # Sets guest_os_family from annotation or Windows OCI container disk image when not already explicit.
 # Annotation osac.openshift.io/guest-os-family wins (linux|windows). Else images matching
-# quay.io/.../containerdisks/windows are treated as windows; otherwise keeps current value (role default linux).
+# Image paths containing 'containerdisks/windows' are treated as windows (informal naming convention
+# in some community images — not a Microsoft-official catalog). Otherwise keeps current value
+# (role default linux).
 - name: Infer guest_os_family from ComputeInstance annotation or image
   ansible.builtin.set_fact:
     guest_os_family: "{{ _guest_os_effective }}"
