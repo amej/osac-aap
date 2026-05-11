@@ -13,6 +13,12 @@
 #
 #   Test 3 (invalid template parameters rejected):
 #     ansible-playbook ... -e test_create_validation_invalid=true
+#
+#   Test 4 (Windows missing image rejected):
+#     ansible-playbook ... -e test_windows_requires_image=true
+#
+#   Test 5 (Windows with explicit image accepted):
+#     ansible-playbook ... -e test_windows_with_image=true
 
 # ──────────────────────────────────────────────────────────────
 # Test 1: Verify spec defaults are merged into a minimal fixture
@@ -140,3 +146,81 @@
               - validation_result is failed
               - "'does not match pattern' in validation_result.msg"
             fail_msg: "Expected validation to reject 'not-a-valid-port' but it {{ 'passed' if validation_result is success else 'failed with: ' + (validation_result.msg | default('unknown error')) }}"
+
+# ──────────────────────────────────────────────────────────────
+# Test 4: Windows without spec.image.sourceRef must fail (no default disk)
+# ──────────────────────────────────────────────────────────────
+- name: "Test ocp_virt_vm -- Windows requires explicit image sourceRef"
+  hosts: localhost
+
+  collections:
+    - osac.templates
+
+  tasks:
+    - when: test_windows_requires_image | default(false) | bool
+      block:
+        - name: Load ocp_virt_vm role defaults (Windows profile maps)
+          ansible.builtin.include_vars:
+            file: "{{ playbook_dir }}/../defaults/main.yaml"
+
+        - name: Load minimal ComputeInstance (no image) and Windows profile defaults
+          ansible.builtin.set_fact:
+            compute_instance: "{{ lookup('file', 'fixtures/computeinstance-defaults-test.yaml') | from_yaml }}"
+            guest_os_family: windows
+            default_spec: "{{ _guest_os_windows_default_spec }}"
+            default_arg_specs: "{{ _guest_os_windows_default_arg_specs }}"
+            template_parameters: {}
+
+        - name: Run create_validate (expect failure — no Windows container disk)
+          block:
+            - name: Include create_validate
+              ansible.builtin.include_role:
+                name: osac.templates.ocp_virt_vm
+                tasks_from: create_validate.yaml
+          rescue:
+            - name: Record expected failure
+              ansible.builtin.set_fact:
+                windows_missing_image_failed: true
+
+        - name: Verify validation failed without Windows image
+          ansible.builtin.assert:
+            that:
+              - windows_missing_image_failed | default(false)
+            fail_msg: >-
+              Expected create_validate to fail when guest_os_family is windows
+              and spec.image.sourceRef is unset
+
+# ──────────────────────────────────────────────────────────────
+# Test 5: Windows with explicit image proceeds through validation
+# ──────────────────────────────────────────────────────────────
+- name: "Test ocp_virt_vm -- Windows with explicit image passes validation"
+  hosts: localhost
+
+  collections:
+    - osac.templates
+
+  tasks:
+    - when: test_windows_with_image | default(false) | bool
+      block:
+        - name: Load ocp_virt_vm role defaults (Windows profile maps)
+          ansible.builtin.include_vars:
+            file: "{{ playbook_dir }}/../defaults/main.yaml"
+
+        - name: Load Windows fixture with registry image
+          ansible.builtin.set_fact:
+            compute_instance: "{{ lookup('file', 'fixtures/computeinstance-windows-with-image-test.yaml') | from_yaml }}"
+            guest_os_family: windows
+            default_spec: "{{ _guest_os_windows_default_spec }}"
+            default_arg_specs: "{{ _guest_os_windows_default_arg_specs }}"
+            template_parameters: {}
+
+        - name: Run create_validate
+          ansible.builtin.include_role:
+            name: osac.templates.ocp_virt_vm
+            tasks_from: create_validate.yaml
+
+        - name: Verify image source from ComputeInstance spec
+          ansible.builtin.assert:
+            that:
+              - vm_image_source == "registry.example.com/osac/windows-golden:ltsc2022"
+            fail_msg: "Expected vm_image_source from spec, got {{ vm_image_source | default('undefined') }}"

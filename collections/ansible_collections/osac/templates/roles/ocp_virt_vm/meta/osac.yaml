@@ -2,8 +2,10 @@
 title: OpenShift Virtualization ComputeInstance Template
 description: >
   Linux or Windows virtual machines on OpenShift Virtualization (KubeVirt).
-  Windows is detected from annotation osac.openshift.io/guest-os-family or from
-  container disk images under containerdisks/windows unless guest_os_family is set explicitly.
+  Windows is detected from annotation osac.openshift.io/guest-os-family or when spec.image.sourceRef
+  contains the substring containerdisks/windows (informal community image naming). Windows
+  requires an explicit container disk reference in spec.image.sourceRef — there is no
+  Microsoft-official KubeVirt default image in this template.
 
 # Specify this is a ComputeInstance template (not a cluster template)
 template_type: compute_instance
