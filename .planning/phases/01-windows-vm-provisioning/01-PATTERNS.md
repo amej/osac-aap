@@ -31,11 +31,12 @@ All five files are modifications of existing files. The closest analog for each 
         description: >
           OS family for the guest VM. If not supplied, the role infers from ComputeInstance
           annotation osac.openshift.io/guest-os-family (linux|windows) or from spec.image.sourceRef
-          containing containerdisks/windows. "linux" uses cloud-init / SSH defaults; "windows"
+          containing containerdisks/windows (informal community naming, not a Microsoft catalog). "linux" uses cloud-init / SSH defaults; "windows"
           applies Windows sizing defaults, sysprep, Hyper-V / clock domain spec, and matching delete cleanup.
+          Windows still requires a non-empty spec.image.sourceRef — the role does not supply a vendor default disk.
 ```
 
-This establishes that runtime-conditional behavior belongs in the `description:` field using a folded scalar (`>`), not in a separate field.
+The excerpt above is the **prior** argument_specs shape; keep heuristic wording aligned with `meta/argument_specs.yaml` in the collection.
 
 **Target state for `exposed_ports` description block** (lines 49-56) — append the OS-dependent default sentence:
 ```yaml

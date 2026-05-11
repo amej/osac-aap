@@ -62,7 +62,7 @@ Consolidate the shipped `windows_oci_vm` role into `ocp_virt_vm`, making `ocp_vi
 ## Existing Code Insights
 
 ### Reusable Assets
-- `ocp_virt_vm/tasks/infer_guest_os_family.yaml` — Already implemented; sets `guest_os_family` from `osac.openshift.io/guest-os-family` annotation or `containerdisks/windows` image path heuristic.
+- `ocp_virt_vm/tasks/infer_guest_os_family.yaml` — Already implemented; sets `guest_os_family` from `osac.openshift.io/guest-os-family` annotation or `containerdisks/windows` image path heuristic (informal naming). Windows VMs still require explicit `spec.image.sourceRef` (validated in `create_validate.yaml`).
 - `defaults/main.yaml` `_guest_os_windows_default_spec` / `_guest_os_windows_default_arg_specs` — Windows resource profile applied in `create.yaml` when `guest_os_family == 'windows'`.
 
 ### Established Patterns

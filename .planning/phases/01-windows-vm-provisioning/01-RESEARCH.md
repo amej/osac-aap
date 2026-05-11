@@ -280,6 +280,8 @@ The logic in `infer_guest_os_family.yaml` is correct for all cases:
 | Invalid annotation + Windows image | `windows` (image heuristic wins) |
 | `spec.image.sourceRef` absent | Treated as empty string via `| default('')` |
 
+The `containerdisks/windows` substring match is an **informal** image-path heuristic only (not a Microsoft product catalog). For **Windows**, validation still requires a non-empty `spec.image.sourceRef` after inference — the role ships no vendor default Windows disk.
+
 Logic is implemented as a single `set_fact` with nested Jinja2 ternaries — no undefined variable risk because all intermediate vars use `| default('')`.
 
 [VERIFIED: tasks/infer_guest_os_family.yaml; manual logic simulation via Python]
