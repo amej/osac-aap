@@ -30,6 +30,18 @@
       from your own registry (for example a golden image built for your environment).
   when: guest_os_family == 'windows'
 
+- name: Require vm_sysprep_admin_password when sysprep is enabled (Windows)
+  ansible.builtin.assert:
+    that:
+      - vm_sysprep_admin_password | length >= 8
+    fail_msg: >-
+      vm_sysprep_admin_password must be set to a value of at least 8 characters
+      when guest_os_family is 'windows' and vm_enable_sysprep is true.
+      No default password is provided — the caller must supply one.
+  when:
+    - guest_os_family == 'windows'
+    - vm_enable_sysprep | bool
+
 - name: Extract VM hostname from ComputeInstance metadata (Windows NetBIOS limit)
   ansible.builtin.set_fact:
     vm_hostname: "{{ compute_instance.metadata.name[:15] }}"
