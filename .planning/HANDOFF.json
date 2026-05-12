@@ -1,0 +1,35 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-05-12T04:23:11Z",
+  "phase": "01",
+  "phase_name": "windows-vm-provisioning",
+  "phase_dir": ".planning/milestones/v1.0-phases/01-windows-vm-provisioning",
+  "plan": 3,
+  "task": 0,
+  "total_tasks": 0,
+  "status": "paused",
+  "completed_tasks": [
+    {"id": 1, "name": "E2E test: Windows 11 VM with sysprep on SNO cluster", "status": "done", "progress": "VM reached Running state on api.my.sno.internal:6443 with sysprep enabled, sysprep ConfigMap created, sysprep disk attached as SATA CD-ROM"},
+    {"id": 2, "name": "Fix create_build_spec.yaml memory consistency", "status": "done", "progress": "Added domain.memory.guest to Windows spec and domain.resources.requests.memory to Linux spec; ansible-lint passed"}
+  ],
+  "remaining_tasks": [
+    {"id": 3, "name": "Sync run-windows-vm-pr changes to osac-windows-vm-support-codeonly branch", "status": "not_started"},
+    {"id": 4, "name": "Commit uncommitted code changes (create_build_spec.yaml fix, vendor updates, test playbook edits)", "status": "not_started"},
+    {"id": 5, "name": "Revert test playbook (test-windows-golden-image.yml) back to golden image defaults (vm_enable_sysprep: false)", "status": "not_started"}
+  ],
+  "blockers": [],
+  "human_actions_pending": [
+    {"action": "Clean up demo-windows namespace and VM on SNO cluster when no longer needed", "context": "E2E test left demo-windows-vm running in demo-windows namespace on api.my.sno.internal:6443", "blocking": false}
+  ],
+  "decisions": [
+    {"decision": "Add both domain.memory.guest and domain.resources.requests.memory to Linux and Windows VM specs", "rationale": "Consistency — Linux had only guest, Windows had only requests; both should specify guest-visible memory and K8s scheduling requests", "phase": "01"}
+  ],
+  "uncommitted_files": [
+    "collections/ansible_collections/osac/templates/roles/ocp_virt_vm/tasks/create_build_spec.yaml",
+    "tests/test-windows-golden-image.yml",
+    "vendor/ansible_collections/nvidia/bare_metal/ (50+ module files)",
+    "vendor/ansible_collections/osac/massopencloud/roles/ocp_4_17_small_github/meta/argument_specs.yaml"
+  ],
+  "next_action": "Commit the create_build_spec.yaml memory consistency fix. Revert test-windows-golden-image.yml to its golden image defaults (vm_enable_sysprep: false, assert sysprep disk NOT present). Then sync changes to osac-windows-vm-support-codeonly branch.",
+  "context_notes": "Session focused on E2E validation and a code review fix. The E2E test ran successfully on second attempt (first failed due to cluster resource exhaustion). The test playbook was temporarily modified to enable sysprep — needs reverting before commit. The branch sync to osac-windows-vm-support-codeonly was requested but not completed."
+}
