@@ -15,6 +15,9 @@
           cores: "{{ vm_cpu_cores }}"
         memory:
           guest: "{{ vm_memory }}"
+        resources:
+          requests:
+            memory: "{{ vm_memory }}"
         devices:
           disks:
             - name: root-disk
@@ -48,6 +51,8 @@
           cores: "{{ vm_cpu_cores }}"
           sockets: 1
           threads: 1
+        memory:
+          guest: "{{ vm_memory }}"
         resources:
           requests:
             memory: "{{ vm_memory }}"
