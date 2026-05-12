@@ -4,6 +4,8 @@ kind: ComputeInstance
 metadata:
   name: test-windows-vm
   namespace: osac-system
+  annotations:
+    osac.openshift.io/guest-os-family: windows
 spec:
   templateID: osac.templates.ocp_virt_vm
   cores: 2
