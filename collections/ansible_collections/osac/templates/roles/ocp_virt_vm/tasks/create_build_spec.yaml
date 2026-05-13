@@ -34,7 +34,7 @@
           dataVolume:
             name: "{{ compute_instance_name }}-root-disk"
 
-- name: Add GPU passthrough device to template spec if required
+- name: Add GPU passthrough devices to template spec
   ansible.builtin.set_fact:
     vm_template_spec: "{{ vm_template_spec | combine(gpu_patch, recursive=True, list_merge='append') }}"
   vars:
@@ -42,6 +42,9 @@
       domain:
         devices:
           hostDevices:
-            - name: gpu
-              deviceName: "{{ gpu_device_name }}"
-  when: (gpu_device_name | default('')) | length > 0
+            - name: "gpu-{{ idx }}"
+              deviceName: "{{ item.resource_name }}"
+  loop: "{{ gpu_devices | default([]) }}"
+  loop_control:
+    index_var: idx
+  when: gpu_devices | default([]) | length > 0
