@@ -178,9 +178,16 @@
                 name: osac.templates.ocp_virt_vm
                 tasks_from: create_validate.yaml
           rescue:
-            - name: Record expected failure
+            - name: Capture error message
               ansible.builtin.set_fact:
+                validation_error: "{{ ansible_failed_result.msg | default('') }}"
                 windows_missing_image_failed: true
+
+            - name: Verify failure was due to missing Windows image
+              ansible.builtin.assert:
+                that:
+                  - "'spec.image.sourceRef' in validation_error or 'Windows' in validation_error"
+                fail_msg: "Validation failed for unexpected reason: {{ validation_error }}"
 
         - name: Verify validation failed without Windows image
           ansible.builtin.assert:
