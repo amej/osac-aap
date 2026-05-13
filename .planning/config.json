@@ -1,0 +1,36 @@
+{
+  "mode": "yolo",
+  "parallelization": true,
+  "commit_docs": false,
+  "model_profile": "balanced",
+  "models": {
+    "planning": "opus",
+    "discuss": "opus",
+    "research": "sonnet",
+    "execution": "opus",
+    "verification": "sonnet",
+    "completion": "sonnet"
+  },
+  "planning": {
+    "sub_repos": [
+      "docs",
+      "enhancement-proposals",
+      "fulfillment-service",
+      "osac-aap",
+      "osac-installer",
+      "osac-operator",
+      "osac-test-infra"
+    ]
+  },
+  "workflow": {
+    "research": false,
+    "plan_check": true,
+    "verifier": true,
+    "auto_advance": true,
+    "_auto_chain_active": false
+  },
+  "git": {
+    "branching_strategy": "none"
+  },
+  "granularity": "standard"
+}

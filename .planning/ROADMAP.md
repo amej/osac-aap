@@ -33,7 +33,7 @@
   - [ ] **SEC-01**: Refactor sysprep `unattend.xml` storage from a Kubernetes ConfigMap to a **Secret** to protect the plaintext `vm_sysprep_admin_password`.
   - [ ] **MAINT-01**: Extract the ~50 lines of inline XML from `tasks/create_secrets.yaml` and move it to a dedicated Jinja2 template in `templates/unattend.xml.j2`.
   - [ ] **TEST-01**: Update the `tests/test.yml` (Test 4) rescue block to capture `ansible_failed_result.msg` and assert it specifically contains "spec.image.sourceRef" or "Windows".
-  - [ ] **HYG-01**: Squash the 36-commit history into a logical, clean set of commits before the final merge.
+  - [ ] **HYG-01**: Squash the 36-commit history into a logical, clean set of commits before the final merge. **[DEFERRED: Awaiting @eranco74 acceptance of current changes]**
   - [ ] **DOC-01**: Restore the missing `default:` description for `exposed_ports` in `meta/argument_specs.yaml` so the runtime default is visible in `ansible-doc`.
   - [ ] **LOGIC-01**: Remove redundant/brittle `failed_when` guards in the LB Service deletion task; rely on `kubernetes.core.k8s` with `state: absent` to handle missing resources natively.
   - [ ] **CONS-01**: Verify that both Windows and Linux spec blocks in `tasks/create_build_spec.yaml` include both `domain.memory.guest` AND `domain.resources.requests.memory`.
@@ -48,16 +48,17 @@
   7. **Documentation**: `ansible-doc` accurately reflects the default values for `exposed_ports`.
   8. **Hygiene**: The PR git history is clean and free of "fix-the-fix" or incremental "WIP" commits.
 
-**Plans**: 4 plans in 2 waves
+**Plans**: 4 plans in 2 waves (3 complete, 1 deferred)
 
 Plans:
-- [ ] 03-01-PLAN.md — Security & maintainability (SEC-01, MAINT-01): ConfigMap→Secret + XML extraction
-- [ ] 03-02-PLAN.md — Testing & documentation (TEST-01, DOC-01, LOGIC-01): Test validation + docs + idempotent delete
-- [ ] 03-03-PLAN.md — Consistency verification (CONS-01): Memory field audit
-- [ ] 03-04-PLAN.md — Git hygiene (HYG-01): Squash commit history (Wave 2, depends on 01-03)
+- [x] 03-01-PLAN.md — Security & maintainability (SEC-01, MAINT-01): ConfigMap→Secret + XML extraction
+- [x] 03-02-PLAN.md — Testing & documentation (TEST-01, DOC-01, LOGIC-01): Test validation + docs + idempotent delete
+- [x] 03-03-PLAN.md — Consistency verification (CONS-01): Memory field audit
+- [ ] 03-04-PLAN.md — Git hygiene (HYG-01): Squash commit history **[DEFERRED: Awaiting @eranco74 acceptance]**
 
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 1. Windows VM Provisioning | v1.0 | 3/3 | Complete | 2026-04-28 |
+| 3. PR #294 Remediation | v1.0 | 3/3 (1 deferred) | Awaiting Feedback | 2026-05-13 |
