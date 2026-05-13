@@ -4,8 +4,22 @@ argument_specs:
       tenant_storage_class_tenant_name:
         type: str
         required: true
-        description: "Tenant name (e.g. from compute_instance.status.tenantReference.name) used to look up the Tenant CR."
-      tenant_namespace:
+        description: >-
+          Tenant name, used in error messages to identify which tenant
+          has a storage tier resolution failure.
+      tenant_storage_class_storage_classes:
+        type: list
+        elements: dict
+        required: true
+        description: >-
+          Resolved storageClasses list injected via extra_vars by the
+          ComputeInstance controller. Each entry has 'name' (K8s StorageClass
+          name) and 'tier' (storage tier label value).
+      tenant_storage_class_storage_tier:
         type: str
         required: true
-        description: "Namespace of the Tenant CR on the management cluster (e.g. from compute_instance.status.tenantReference.namespace)."
+        description: >-
+          Storage tier to resolve (e.g. "default", "fast", "archival").
+          The role matches this against the tier field in the injected
+          storageClasses list and fails if no matching tier is found,
+          listing the available tiers.
