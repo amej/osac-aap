@@ -4,4 +4,6 @@
     name: osac.templates.ocp_virt_vm
     tasks_from: create
   vars:
-    gpu_device_name: "nvidia.com/GB100"
+    gpu_devices:
+      - pci_device_selector: "10DE:2901"
+        resource_name: "nvidia.com/GB100"

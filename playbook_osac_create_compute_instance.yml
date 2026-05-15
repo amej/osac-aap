@@ -8,6 +8,7 @@
     compute_instance_name: "{{ ansible_eda.event.payload.metadata.name }}"
     template_id: "{{ ansible_eda.event.payload.spec.templateID }}"
     template_parameters: {}
+    tenant_storage_classes: "{{ ansible_eda.event.tenant_storage_classes | default([]) }}"
 
   pre_tasks:
     - name: Show EDA Event
@@ -20,25 +21,18 @@
       ansible.builtin.include_role:
         name: osac.service.tenant_target_namespace
 
-    # Discover tenant StorageClass from Tenant status; sets tenant_storage_class_name
-    - name: Fail if tenant reference is missing
+    - name: Fail if tenant storage classes not injected
       ansible.builtin.fail:
         msg: >-
-          ComputeInstance '{{ compute_instance_name }}' has no tenantReference in status.
-          The osac-operator CI controller should set this before triggering provisioning.
-      when: >-
-        compute_instance.status.tenantReference is not defined or
-        compute_instance.status.tenantReference.name is not defined or
-        compute_instance.status.tenantReference.name | length == 0 or
-        compute_instance.status.tenantReference.namespace is not defined or
-        compute_instance.status.tenantReference.namespace | length == 0
+          ComputeInstance '{{ compute_instance_name }}' has no tenant_storage_classes
+          in extra_vars. The osac-operator CI controller should inject the resolved
+          storageClasses list before triggering provisioning.
+      when: tenant_storage_classes | length == 0
 
-    - name: Discover tenant StorageClass from Tenant status
-      ansible.builtin.include_role:
-        name: osac.service.tenant_storage_class
-      vars:
+    - name: Set storage classes context for downstream roles
+      ansible.builtin.set_fact:
+        tenant_storage_class_storage_classes: "{{ tenant_storage_classes }}"
         tenant_storage_class_tenant_name: "{{ compute_instance.status.tenantReference.name }}"
-        tenant_namespace: "{{ compute_instance.status.tenantReference.namespace }}"
 
   tasks:
 
